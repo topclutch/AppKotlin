@@ -1,0 +1,1375 @@
+import tkinter as tk
+from tkinter import ttk, messagebox, font
+import math
+import numpy as np
+from PIL import Image, ImageTk, ImageDraw
+import colorsys
+
+class ModernRoadOptimizer:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Road Optimization Suite")
+        self.root.geometry("1200x800")
+        
+        # Set theme colors
+        self.colors = {
+            "bg_dark": "#1e293b",
+            "bg_light": "#f8fafc",
+            "primary": "#0ea5e9",
+            "primary_dark": "#0284c7",
+            "secondary": "#64748b",
+            "text_dark": "#0f172a",
+            "text_light": "#f1f5f9",
+            "accent": "#06b6d4",
+            "success": "#10b981",
+            "warning": "#f59e0b",
+            "danger": "#ef4444",
+            "border": "#cbd5e1"
+        }
+        
+        self.root.configure(bg=self.colors["bg_light"])
+        
+        # Set custom fonts
+        self.title_font = font.Font(family="Helvetica", size=20, weight="bold")
+        self.header_font = font.Font(family="Helvetica", size=16, weight="bold")
+        self.subheader_font = font.Font(family="Helvetica", size=14, weight="bold")
+        self.normal_font = font.Font(family="Helvetica", size=12)
+        self.small_font = font.Font(family="Helvetica", size=10)
+        
+        # Configure ttk styles
+        self.style = ttk.Style()
+        self.style.configure("TScale", background=self.colors["bg_light"])
+        
+        # Configure scrollbar style
+        self.style.configure(
+            "Custom.Vertical.TScrollbar",
+            background=self.colors["primary"],
+            arrowcolor=self.colors["text_light"],
+            bordercolor=self.colors["border"],
+            troughcolor=self.colors["bg_light"],
+            width=16
+        )
+        
+        # Configure horizontal scrollbar style
+        self.style.configure(
+            "Custom.Horizontal.TScrollbar",
+            background=self.colors["primary"],
+            arrowcolor=self.colors["text_light"],
+            bordercolor=self.colors["border"],
+            troughcolor=self.colors["bg_light"],
+            width=16
+        )
+        
+        # Road data
+        self.roads = ["Highway A", "Highway B", "Highway C", "Highway D", "Highway E"]
+        self.road_positions = {
+            "Highway A": {"start": (150, 200), "end": (450, 200), "control": None},
+            "Highway B": {"start": (150, 400), "end": (450, 400), "control": None},
+            "Highway C": {"start": (150, 200), "end": (150, 400), "control": None},
+            "Highway D": {"start": (450, 200), "end": (450, 400), "control": None},
+            "Highway E": {"start": (150, 200), "end": (450, 400), "control": (300, 300)}
+        }
+        self.rewards = {road: [] for road in self.roads}
+        self.counts = {road: 0 for road in self.roads}
+        self.total_days = 0
+        
+        self.road_params = {
+            "Highway A": {"benefit": 90, "traffic_factor": 1.0},
+            "Highway B": {"benefit": 90, "traffic_factor": 1.0},
+            "Highway C": {"benefit": 90, "traffic_factor": 1.0},
+            "Highway D": {"benefit": 90, "traffic_factor": 1.0},
+            "Highway E": {"benefit": 90, "traffic_factor": 1.0},
+        }
+        
+        # Create UI elements
+        self.create_widgets()
+        
+    def create_widgets(self):
+        # Main container with gradient background
+        self.main_frame = tk.Frame(self.root, bg=self.colors["bg_light"], padx=20, pady=20)
+        self.main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Header with logo and title
+        header_frame = tk.Frame(self.main_frame, bg=self.colors["bg_light"], pady=10)
+        header_frame.pack(fill=tk.X)
+        
+        # Create a simple logo
+        logo_canvas = tk.Canvas(header_frame, width=50, height=50, bg=self.colors["bg_light"], highlightthickness=0)
+        logo_canvas.pack(side=tk.LEFT, padx=(0, 15))
+        
+        # Draw logo
+        logo_canvas.create_oval(5, 5, 45, 45, fill=self.colors["primary"], outline="")
+        logo_canvas.create_oval(15, 15, 35, 35, fill=self.colors["bg_light"], outline="")
+        
+        # Title and subtitle
+        title_container = tk.Frame(header_frame, bg=self.colors["bg_light"])
+        title_container.pack(side=tk.LEFT)
+        
+        title_label = tk.Label(
+            title_container, 
+            text="RoadSmart™ Optimization Suite", 
+            font=self.title_font, 
+            bg=self.colors["bg_light"], 
+            fg=self.colors["text_dark"]
+        )
+        title_label.pack(anchor=tk.W)
+        
+        subtitle_label = tk.Label(
+            title_container, 
+            text="Powered by Advanced UCB Algorithm", 
+            font=self.small_font, 
+            bg=self.colors["bg_light"], 
+            fg=self.colors["secondary"]
+        )
+        subtitle_label.pack(anchor=tk.W)
+        
+        # Main content container
+        content_frame = tk.Frame(self.main_frame, bg=self.colors["bg_light"])
+        content_frame.pack(fill=tk.BOTH, expand=True, pady=20)
+        
+        # Left panel - Controls
+        self.controls_frame = tk.Frame(
+            content_frame, 
+            bg=self.colors["bg_light"], 
+            padx=20, 
+            pady=20, 
+            highlightthickness=1, 
+            highlightbackground=self.colors["border"],
+            width=400  # Fixed width for controls panel
+        )
+        self.controls_frame.pack(side=tk.LEFT, fill=tk.Y, expand=False, padx=(0, 15), pady=0)
+        self.controls_frame.pack_propagate(False)  # Prevent frame from shrinking
+        
+        # Create a main container for controls with fixed layout
+        controls_container = tk.Frame(self.controls_frame, bg=self.colors["bg_light"])
+        controls_container.pack(fill=tk.BOTH, expand=True)
+        
+        # Panel header with icon
+        controls_header_frame = tk.Frame(controls_container, bg=self.colors["bg_light"])
+        controls_header_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        # Settings icon
+        settings_canvas = tk.Canvas(controls_header_frame, width=24, height=24, bg=self.colors["bg_light"], highlightthickness=0)
+        settings_canvas.pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Draw gear icon
+        center_x, center_y = 12, 12
+        radius = 8
+        settings_canvas.create_oval(center_x-radius, center_y-radius, center_x+radius, center_y+radius, 
+                                   outline=self.colors["primary"], width=2)
+        for i in range(8):
+            angle = i * math.pi / 4
+            x1 = center_x + (radius-2) * math.cos(angle)
+            y1 = center_y + (radius-2) * math.sin(angle)
+            x2 = center_x + (radius+4) * math.cos(angle)
+            y2 = center_y + (radius+4) * math.sin(angle)
+            settings_canvas.create_line(x1, y1, x2, y2, fill=self.colors["primary"], width=2)
+        
+        controls_header = tk.Label(
+            controls_header_frame, 
+            text="Configuration", 
+            font=self.header_font, 
+            bg=self.colors["bg_light"], 
+            fg=self.colors["text_dark"]
+        )
+        controls_header.pack(side=tk.LEFT)
+        
+        # Days input with modern styling
+        days_frame = tk.Frame(controls_container, bg=self.colors["bg_light"])
+        days_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        days_label = tk.Label(
+            days_frame, 
+            text="Analysis Period:", 
+            font=self.normal_font, 
+            bg=self.colors["bg_light"], 
+            fg=self.colors["text_dark"]
+        )
+        days_label.pack(anchor=tk.W, pady=(0, 5))
+        
+        days_input_frame = tk.Frame(days_frame, bg=self.colors["bg_light"])
+        days_input_frame.pack(fill=tk.X)
+        
+        self.days_entry = ttk.Entry(days_input_frame, font=self.normal_font, width=10)
+        self.days_entry.pack(side=tk.LEFT)
+        
+        days_unit = tk.Label(
+            days_input_frame, 
+            text="days", 
+            font=self.normal_font, 
+            bg=self.colors["bg_light"], 
+            fg=self.colors["secondary"],
+            padx=5
+        )
+        days_unit.pack(side=tk.LEFT)
+        
+        self.set_days_button = tk.Button(
+            days_input_frame, 
+            text="Set Period", 
+            font=self.normal_font, 
+            bg=self.colors["primary"], 
+            fg=self.colors["text_light"], 
+            bd=0, 
+            padx=10, 
+            pady=5, 
+            cursor="hand2",
+            activebackground=self.colors["primary_dark"],
+            activeforeground=self.colors["text_light"],
+            command=self.set_days
+        )
+        self.set_days_button.pack(side=tk.LEFT, padx=(10, 0))
+        
+        # Separator
+        separator = ttk.Separator(controls_container, orient='horizontal')
+        separator.pack(fill=tk.X, pady=15)
+        
+        # Traffic data container with better styling
+        traffic_header = tk.Label(
+            controls_container, 
+            text="Traffic Impact Data", 
+            font=self.subheader_font, 
+            bg=self.colors["bg_light"], 
+            fg=self.colors["text_dark"]
+        )
+        traffic_header.pack(anchor=tk.W, pady=(0, 10))
+        
+        # Create a fixed height frame for traffic data
+        self.traffic_frame = tk.Frame(
+            controls_container, 
+            bg=self.colors["bg_light"],
+            highlightthickness=1,
+            highlightbackground=self.colors["border"]
+        )
+        self.traffic_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
+        
+        # Traffic data scroll container with better styling
+        self.traffic_canvas = tk.Canvas(
+            self.traffic_frame, 
+            bg=self.colors["bg_light"], 
+            highlightthickness=0
+        )
+        self.traffic_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Modern scrollbar with more visible styling
+        traffic_scrollbar = ttk.Scrollbar(
+            self.traffic_frame, 
+            orient=tk.VERTICAL, 
+            command=self.traffic_canvas.yview,
+            style="Custom.Vertical.TScrollbar"
+        )
+        traffic_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.traffic_canvas.configure(yscrollcommand=traffic_scrollbar.set)
+        
+        # Frame for traffic data content
+        self.traffic_content = tk.Frame(self.traffic_canvas, bg=self.colors["bg_light"])
+        self.traffic_canvas_window = self.traffic_canvas.create_window(
+            (0, 0), 
+            window=self.traffic_content, 
+            anchor=tk.NW,
+            width=self.controls_frame.winfo_width() - 60  # Set width to match parent frame
+        )
+        
+        # Update canvas when traffic_content changes size
+        self.traffic_content.bind("<Configure>", self.on_frame_configure)
+        
+        # Add a message when no days are set
+        self.no_data_label = tk.Label(
+            self.traffic_content,
+            text="Please set the number of days above to input traffic data.",
+            font=self.normal_font,
+            bg=self.colors["bg_light"],
+            fg=self.colors["secondary"],
+            wraplength=300,
+            pady=20
+        )
+        self.no_data_label.pack(expand=True)
+        
+        # Calculate button with improved styling - ALWAYS VISIBLE AT BOTTOM
+        button_frame = tk.Frame(controls_container, bg=self.colors["bg_light"], pady=10)
+        button_frame.pack(fill=tk.X, side=tk.BOTTOM)
+        
+        self.calculate_button = tk.Button(
+            button_frame, 
+            text="Calculate Roads to Repair", 
+            font=self.normal_font, 
+            bg=self.colors["primary"], 
+            fg=self.colors["text_light"], 
+            bd=0, 
+            padx=15, 
+            pady=10, 
+            cursor="hand2",
+            activebackground=self.colors["primary_dark"],
+            activeforeground=self.colors["text_light"],
+            command=self.calculate_ucb
+        )
+        self.calculate_button.pack(fill=tk.X)
+        
+        # Right panel - Visualization with card-like styling
+        self.visualization_frame = tk.Frame(
+            content_frame, 
+            bg=self.colors["bg_light"], 
+            padx=0, 
+            pady=0, 
+            highlightthickness=1, 
+            highlightbackground=self.colors["border"]
+        )
+        self.visualization_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        
+        # Visualization header with tabs
+        viz_header_frame = tk.Frame(self.visualization_frame, bg=self.colors["primary"], padx=15, pady=10)
+        viz_header_frame.pack(fill=tk.X)
+        
+        viz_title = tk.Label(
+            viz_header_frame, 
+            text="Road Network Analysis", 
+            font=self.header_font, 
+            bg=self.colors["primary"], 
+            fg=self.colors["text_light"]
+        )
+        viz_title.pack(side=tk.LEFT)
+        
+        # Map container with border and scrollbars
+        map_container = tk.Frame(
+            self.visualization_frame, 
+            bg=self.colors["bg_light"], 
+            padx=20, 
+            pady=20
+        )
+        map_container.pack(fill=tk.BOTH, expand=True)
+        
+        # Create a frame to hold the canvas and scrollbars
+        map_scroll_frame = tk.Frame(map_container, bg=self.colors["bg_light"])
+        map_scroll_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Road map canvas with improved styling
+        self.map_canvas = tk.Canvas(
+            map_scroll_frame, 
+            bg=self.colors["bg_light"], 
+            width=800,  # Increased size to allow for scrolling
+            height=600,  # Increased size to allow for scrolling
+            highlightthickness=1,
+            highlightbackground=self.colors["border"],
+            scrollregion=(0, 0, 1000, 800)  # Set scrollable area larger than visible area
+        )
+        self.map_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Add horizontal scrollbar
+        map_h_scrollbar = ttk.Scrollbar(
+            map_scroll_frame, 
+            orient=tk.HORIZONTAL, 
+            command=self.map_canvas.xview,
+            style="Custom.Horizontal.TScrollbar"
+        )
+        map_h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        # Add vertical scrollbar
+        map_v_scrollbar = ttk.Scrollbar(
+            map_scroll_frame, 
+            orient=tk.VERTICAL, 
+            command=self.map_canvas.yview,
+            style="Custom.Vertical.TScrollbar"
+        )
+        map_v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Configure canvas to use scrollbars
+        self.map_canvas.configure(
+            xscrollcommand=map_h_scrollbar.set,
+            yscrollcommand=map_v_scrollbar.set
+        )
+        
+        # Add zoom controls
+        zoom_frame = tk.Frame(map_container, bg=self.colors["bg_light"], padx=10, pady=5)
+        zoom_frame.pack(fill=tk.X, before=map_scroll_frame)
+        
+        zoom_label = tk.Label(
+            zoom_frame,
+            text="Zoom:",
+            font=self.normal_font,
+            bg=self.colors["bg_light"],
+            fg=self.colors["text_dark"]
+        )
+        zoom_label.pack(side=tk.LEFT, padx=(0, 10))
+        
+        zoom_in_btn = tk.Button(
+            zoom_frame,
+            text="+",
+            font=self.normal_font,
+            bg=self.colors["primary"],
+            fg=self.colors["text_light"],
+            width=3,
+            bd=0,
+            padx=5,
+            pady=2,
+            cursor="hand2",
+            activebackground=self.colors["primary_dark"],
+            activeforeground=self.colors["text_light"],
+            command=self.zoom_in
+        )
+        zoom_in_btn.pack(side=tk.LEFT, padx=5)
+        
+        zoom_out_btn = tk.Button(
+            zoom_frame,
+            text="-",
+            font=self.normal_font,
+            bg=self.colors["primary"],
+            fg=self.colors["text_light"],
+            width=3,
+            bd=0,
+            padx=5,
+            pady=2,
+            cursor="hand2",
+            activebackground=self.colors["primary_dark"],
+            activeforeground=self.colors["text_light"],
+            command=self.zoom_out
+        )
+        zoom_out_btn.pack(side=tk.LEFT)
+        
+        # Add instructions for map navigation
+        map_instructions = tk.Label(
+            zoom_frame,
+            text="Use scrollbars o rueda del ratón para navegar el mapa",
+            font=self.small_font,
+            bg=self.colors["bg_light"],
+            fg=self.colors["secondary"]
+        )
+        map_instructions.pack(side=tk.RIGHT)
+        
+        # Results section with card styling and scrolling
+        self.results_frame = tk.Frame(
+            self.visualization_frame, 
+            bg=self.colors["bg_light"], 
+            padx=20, 
+            pady=15,
+            highlightthickness=1,
+            highlightbackground=self.colors["border"]
+        )
+        self.results_frame.pack(fill=tk.X, padx=20, pady=20)
+        
+        results_header = tk.Label(
+            self.results_frame, 
+            text="Analysis Results", 
+            font=self.subheader_font, 
+            bg=self.colors["bg_light"], 
+            fg=self.colors["text_dark"]
+        )
+        results_header.pack(anchor=tk.W, pady=(0, 10))
+        
+        # Create a scrollable frame for results - INCREASED HEIGHT
+        results_scroll_frame = tk.Frame(
+            self.results_frame,
+            bg=self.colors["bg_light"],
+            height=200  # Increased height for results area
+        )
+        results_scroll_frame.pack(fill=tk.X, expand=False)
+        results_scroll_frame.pack_propagate(False)  # Prevent frame from shrinking
+        
+        # Results canvas for scrolling
+        self.results_canvas = tk.Canvas(
+            results_scroll_frame, 
+            bg=self.colors["bg_light"], 
+            highlightthickness=0
+        )
+        self.results_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Modern scrollbar for results
+        results_scrollbar = ttk.Scrollbar(
+            results_scroll_frame, 
+            orient=tk.VERTICAL, 
+            command=self.results_canvas.yview,
+            style="Custom.Vertical.TScrollbar"
+        )
+        results_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.results_canvas.configure(yscrollcommand=results_scrollbar.set)
+        
+        # Frame for results content
+        self.results_content = tk.Frame(self.results_canvas, bg=self.colors["bg_light"])
+        self.results_canvas_window = self.results_canvas.create_window(
+            (0, 0), 
+            window=self.results_content, 
+            anchor=tk.NW,
+            width=results_scroll_frame.winfo_width() - 30
+        )
+        
+        # Initial results label
+        self.results_label = tk.Label(
+            self.results_content, 
+            text="Run the calculation to see optimization results", 
+            font=self.normal_font, 
+            bg=self.colors["bg_light"], 
+            fg=self.colors["secondary"],
+            justify=tk.LEFT,
+            wraplength=580,
+            anchor=tk.W
+        )
+        self.results_label.pack(fill=tk.X)
+        
+        # Update canvas when results_content changes size
+        self.results_content.bind("<Configure>", self.on_results_configure)
+        
+        # Draw initial road map
+        self.draw_road_map()
+        
+        # Bind resize event to update canvas
+        self.root.bind("<Configure>", self.on_window_resize)
+        
+        # Bind mouse wheel to scroll
+        self.traffic_canvas.bind_all("<MouseWheel>", self.on_mousewheel)
+        
+        # Add a tooltip to explain scrolling
+        self.add_scroll_tooltip()
+    
+    def add_scroll_tooltip(self):
+        """Add a tooltip to explain scrolling"""
+        tooltip_frame = tk.Frame(
+            self.traffic_frame, 
+            bg=self.colors["primary"],
+            padx=10,
+            pady=5
+        )
+        tooltip_frame.place(relx=0.5, rely=0, anchor=tk.N)
+        
+        tooltip_text = tk.Label(
+            tooltip_frame,
+            text="Use mouse wheel to scroll",
+            font=self.small_font,
+            bg=self.colors["primary"],
+            fg=self.colors["text_light"]
+        )
+        tooltip_text.pack()
+        
+        # Schedule tooltip to disappear after 5 seconds
+        self.root.after(5000, tooltip_frame.destroy)
+    
+    def on_mousewheel(self, event):
+        """Handle mouse wheel scrolling for traffic, results, and map"""
+        # Get the widget under the cursor
+        widget = event.widget
+        
+        # Determine which canvas to scroll
+        if self.traffic_canvas.winfo_containing(event.x_root, event.y_root):
+            self.traffic_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        elif hasattr(self, 'results_canvas') and self.results_canvas.winfo_containing(event.x_root, event.y_root):
+            self.results_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        elif hasattr(self, 'map_canvas') and self.map_canvas.winfo_containing(event.x_root, event.y_root):
+            # Hold Ctrl to scroll horizontally, otherwise scroll vertically
+            if event.state & 0x4:  # Check if Ctrl key is pressed
+                self.map_canvas.xview_scroll(int(-1*(event.delta/120)), "units")
+            else:
+                self.map_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    
+    def on_frame_configure(self, event=None):
+        """Update the scrollregion of the canvas when the frame changes size"""
+        self.traffic_canvas.configure(scrollregion=self.traffic_canvas.bbox("all"))
+    
+    def on_results_configure(self, event=None):
+        """Update the scrollregion of the results canvas when the frame changes size"""
+        self.results_canvas.configure(scrollregion=self.results_canvas.bbox("all"))
+    
+    def on_window_resize(self, event=None):
+        """Update canvas width when window is resized"""
+        if hasattr(self, 'traffic_canvas') and hasattr(self, 'traffic_content'):
+            # Update the canvas window width to match the frame
+            width = self.controls_frame.winfo_width() - 60
+            self.traffic_canvas.itemconfig(self.traffic_canvas_window, width=width)
+    
+    def zoom_in(self, event=None):
+        """Zoom in on the map"""
+        # Get current scroll region
+        x1, y1, x2, y2 = self.map_canvas.cget("scrollregion").split()
+        x1, y1, x2, y2 = float(x1), float(y1), float(x2), float(y2)
+        
+        # Calculate new scroll region (zoom in by 10%)
+        new_width = (x2 - x1) * 1.1
+        new_height = (y2 - y1) * 1.1
+        
+        # Set new scroll region
+        self.map_canvas.configure(scrollregion=(x1, y1, x1 + new_width, y1 + new_height))
+        
+        # Redraw the map with the new dimensions
+        self.draw_road_map()
+    
+    def zoom_out(self, event=None):
+        """Zoom out on the map"""
+        # Get current scroll region
+        x1, y1, x2, y2 = self.map_canvas.cget("scrollregion").split()
+        x1, y1, x2, y2 = float(x1), float(y1), float(x2), float(y2)
+        
+        # Calculate new scroll region (zoom out by 10%)
+        new_width = max((x2 - x1) * 0.9, 800)  # Don't go smaller than 800
+        new_height = max((y2 - y1) * 0.9, 600)  # Don't go smaller than 600
+        
+        # Set new scroll region
+        self.map_canvas.configure(scrollregion=(x1, y1, x1 + new_width, y1 + new_height))
+        
+        # Redraw the map with the new dimensions
+        self.draw_road_map()
+    
+    def set_days(self):
+        try:
+            self.total_days = int(self.days_entry.get())
+            if self.total_days <= 0:
+                raise ValueError
+            
+            # Clear existing traffic inputs
+            for widget in self.traffic_content.winfo_children():
+                widget.destroy()
+            
+            self.day_widgets = []
+            
+            # Add legend with improved styling
+            legend_frame = tk.Frame(self.traffic_content, bg=self.colors["bg_light"], pady=5)
+            legend_frame.pack(fill=tk.X)
+            
+            legend_label = tk.Label(
+                legend_frame, 
+                text="Traffic Impact Scale", 
+                font=self.normal_font, 
+                bg=self.colors["bg_light"], 
+                fg=self.colors["text_dark"]
+            )
+            legend_label.pack(anchor=tk.W)
+            
+            legend_desc = tk.Label(
+                legend_frame, 
+                text="1 = minimal impact, 10 = severe congestion", 
+                font=self.small_font, 
+                bg=self.colors["bg_light"], 
+                fg=self.colors["secondary"]
+            )
+            legend_desc.pack(anchor=tk.W)
+            
+            # Add scroll instruction
+            scroll_instruction = tk.Label(
+                legend_frame,
+                text="Scroll down to see all days",
+                font=self.small_font,
+                bg=self.colors["bg_light"],
+                fg=self.colors["primary"],
+                pady=5
+            )
+            scroll_instruction.pack(anchor=tk.W)
+            
+            # Create traffic inputs for each day and road with improved styling
+            for day in range(1, self.total_days + 1):
+                # Day container with card-like styling
+                day_frame = tk.Frame(
+                    self.traffic_content, 
+                    bg=self.colors["bg_light"], 
+                    padx=10, 
+                    pady=10, 
+                    highlightthickness=1, 
+                    highlightbackground=self.colors["border"]
+                )
+                day_frame.pack(fill=tk.X, pady=10, padx=5)
+                
+                # Day header with accent color
+                day_header = tk.Frame(day_frame, bg=self.colors["primary"], padx=5, pady=2)
+                day_header.pack(fill=tk.X)
+                
+                day_label = tk.Label(
+                    day_header, 
+                    text=f"Day {day}", 
+                    font=self.normal_font, 
+                    bg=self.colors["primary"], 
+                    fg=self.colors["text_light"]
+                )
+                day_label.pack(anchor=tk.W)
+                
+                day_inputs = []
+                
+                # Road inputs container
+                roads_container = tk.Frame(day_frame, bg=self.colors["bg_light"])
+                roads_container.pack(fill=tk.X, expand=True, pady=5)
+                
+                # Road inputs
+                for i, road in enumerate(self.roads):
+                    # Create a frame for each road
+                    road_frame = tk.Frame(roads_container, bg=self.colors["bg_light"], pady=5)
+                    road_frame.pack(fill=tk.X)
+                    
+                    # Road label
+                    road_label = tk.Label(
+                        road_frame, 
+                        text=road, 
+                        font=self.normal_font, 
+                        bg=self.colors["bg_light"], 
+                        fg=self.colors["text_dark"],
+                        width=10,
+                        anchor=tk.W
+                    )
+                    road_label.pack(side=tk.LEFT)
+                    
+                    # Scale container with min/max labels
+                    scale_container = tk.Frame(road_frame, bg=self.colors["bg_light"])
+                    scale_container.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+                    
+                    scale_header = tk.Frame(scale_container, bg=self.colors["bg_light"])
+                    scale_header.pack(fill=tk.X)
+                    
+                    min_label = tk.Label(
+                        scale_header, 
+                        text="Low", 
+                        font=self.small_font, 
+                        bg=self.colors["bg_light"], 
+                        fg=self.colors["secondary"]
+                    )
+                    min_label.pack(side=tk.LEFT)
+                    
+                    max_label = tk.Label(
+                        scale_header, 
+                        text="High", 
+                        font=self.small_font, 
+                        bg=self.colors["bg_light"], 
+                        fg=self.colors["secondary"]
+                    )
+                    max_label.pack(side=tk.RIGHT)
+                    
+                    # Create a unique variable for each scale to avoid lambda issues
+                    traffic_scale = ttk.Scale(
+                        scale_container, 
+                        from_=1, 
+                        to=10, 
+                        orient=tk.HORIZONTAL
+                    )
+                    traffic_scale.set(5)  # Default value
+                    traffic_scale.pack(fill=tk.X)
+                    
+                    # Value display with badge-like styling
+                    value_frame = tk.Frame(road_frame, bg=self.colors["bg_light"], padx=5)
+                    value_frame.pack(side=tk.LEFT)
+                    
+                    traffic_value = tk.Label(
+                        value_frame, 
+                        text="5", 
+                        font=self.normal_font, 
+                        bg=self.colors["warning"], 
+                        fg=self.colors["text_light"],
+                        width=2,
+                        padx=5,
+                        pady=2
+                    )
+                    traffic_value.pack()
+                    
+                    # Store references to avoid garbage collection
+                    traffic_scale.traffic_value = traffic_value
+                    
+                    # Update label when scale changes - use a closure to capture the correct label
+                    def make_callback(label):
+                        return lambda val: self.update_traffic_value(label, val)
+                    
+                    traffic_scale.configure(command=make_callback(traffic_value))
+                    
+                    day_inputs.append((road, traffic_scale, traffic_value))
+                
+                self.day_widgets.append(day_inputs)
+            
+            # Update canvas scroll region
+            self.traffic_content.update_idletasks()
+            self.on_frame_configure()
+            
+            # Highlight the Calculate button to draw attention to it
+            self.highlight_calculate_button()
+            
+            # Show a confirmation message
+            messagebox.showinfo(
+                "Period Set", 
+                f"Analysis period set to {self.total_days} days.\nPlease set traffic impact values for each road and then click 'Calculate Optimal Routes'."
+            )
+            
+        except ValueError:
+            messagebox.showerror("Error", "Please enter a valid number of days greater than 0")
+    
+    def highlight_calculate_button(self):
+        """Highlight the calculate button to draw attention to it"""
+        original_bg = self.calculate_button.cget("background")
+        original_fg = self.calculate_button.cget("foreground")
+        
+        # Flash the button a few times
+        def flash(count):
+            if count % 2 == 0:
+                self.calculate_button.config(
+                    bg=self.colors["success"],
+                    fg=self.colors["text_light"]
+                )
+            else:
+                self.calculate_button.config(
+                    bg=original_bg,
+                    fg=original_fg
+                )
+            
+            if count > 0:
+                self.root.after(500, lambda: flash(count - 1))
+        
+        flash(5)  # Flash 5 times
+    
+    def update_traffic_value(self, label, val):
+        """Update traffic value label with color coding"""
+        value = int(float(val))
+        label.configure(text=str(value))
+        
+        # Color coding based on value
+        if value <= 3:
+            bg_color = self.colors["success"]
+        elif value <= 7:
+            bg_color = self.colors["warning"]
+        else:
+            bg_color = self.colors["danger"]
+            
+        label.configure(bg=bg_color)
+    
+    def create_map_background(self, width, height):
+        """Create a professional looking map background"""
+        # Convert width and height to integers
+        width = int(width)
+        height = int(height)
+        
+        # Create a new image with a light color
+        image = Image.new('RGBA', (width, height), self.colors["bg_light"])
+        draw = ImageDraw.Draw(image)
+        
+        # Draw a subtle grid pattern
+        grid_color = "#e2e8f0"  # Light gray
+        grid_spacing = 20
+        
+        # Draw vertical grid lines
+        for x in range(0, width, grid_spacing):
+            draw.line([(x, 0), (x, height)], fill=grid_color, width=1)
+            
+        # Draw horizontal grid lines
+        for y in range(0, height, grid_spacing):
+            draw.line([(0, y), (width, y)], fill=grid_color, width=1)
+        
+        return ImageTk.PhotoImage(image)
+    
+    def draw_road_map(self, ucb_values=None):
+        self.map_canvas.delete("all")
+        
+        # Get canvas dimensions and scroll region
+        width = self.map_canvas.winfo_width()
+        height = self.map_canvas.winfo_height()
+        
+        # Get scroll region
+        scroll_region = self.map_canvas.cget("scrollregion").split()
+        if len(scroll_region) == 4:
+            scroll_width = float(scroll_region[2])
+            scroll_height = float(scroll_region[3])
+        else:
+            scroll_width = 1000
+            scroll_height = 800
+        
+        # Use the larger of the visible area or scroll region
+        width = max(width, int(scroll_width))
+        height = max(height, int(scroll_height))
+        
+        # Ensure minimum dimensions
+        width = max(width, 800)
+        height = max(height, 600)
+        
+        # Create and display map background with improved styling
+        self.bg_image = self.create_map_background(width, height)
+        self.map_canvas.create_image(0, 0, image=self.bg_image, anchor=tk.NW)
+        
+        # Draw a border around the map
+        self.map_canvas.create_rectangle(
+            2, 2, width-2, height-2,
+            outline=self.colors["border"],
+            width=2,
+            dash=(4, 4)
+        )
+        
+        # Draw title with better styling
+        title_bg = self.map_canvas.create_rectangle(
+            width/2 - 150, 10,
+            width/2 + 150, 50,
+            fill=self.colors["primary"],
+            outline=""
+        )
+        
+        self.map_canvas.create_text(
+            width/2, 30, 
+            text="Regional Road Network", 
+            font=self.subheader_font, 
+            fill=self.colors["text_light"]
+        )
+        
+        # Draw compass rose in top right corner with improved styling
+        compass_x, compass_y = width - 60, 60
+        compass_size = 35
+        
+        # Draw compass background
+        self.map_canvas.create_oval(
+            compass_x - compass_size, compass_y - compass_size,
+            compass_x + compass_size, compass_y + compass_size,
+            fill="#f8fafc", outline=self.colors["secondary"], width=2
+        )
+        
+        # Draw compass directions with better styling
+        directions = [("N", 0, -1), ("E", 1, 0), ("S", 0, 1), ("W", -1, 0)]
+        for label, dx, dy in directions:
+            # Draw direction line
+            self.map_canvas.create_line(
+                compass_x, compass_y,
+                compass_x + dx * compass_size * 0.7,
+                compass_y + dy * compass_size * 0.7,
+                fill=self.colors["secondary"],
+                width=2
+            )
+            
+            # Draw direction label
+            self.map_canvas.create_text(
+                compass_x + dx * compass_size * 0.8,
+                compass_y + dy * compass_size * 0.8,
+                text=label,
+                font=self.normal_font,
+                fill=self.colors["text_dark"]
+            )
+        
+        # Draw compass center
+        self.map_canvas.create_oval(
+            compass_x - 5, compass_y - 5,
+            compass_x + 5, compass_y + 5,
+            fill=self.colors["primary"], outline=""
+        )
+        
+        # Draw scale bar at bottom left
+        scale_x, scale_y = 80, height - 30
+        scale_length = 100
+        
+        self.map_canvas.create_line(
+            scale_x, scale_y,
+            scale_x + scale_length, scale_y,
+            fill=self.colors["text_dark"],
+            width=3,
+            capstyle=tk.ROUND
+        )
+        
+        # Draw scale ticks
+        for i in range(5):
+            tick_x = scale_x + (i * scale_length / 4)
+            self.map_canvas.create_line(
+                tick_x, scale_y - 5,
+                tick_x, scale_y + 5,
+                fill=self.colors["text_dark"],
+                width=2
+            )
+        
+        # Draw scale labels
+        self.map_canvas.create_text(
+            scale_x, scale_y + 15,
+            text="0 km",
+            font=self.small_font,
+            fill=self.colors["text_dark"],
+            anchor=tk.W
+        )
+        
+        self.map_canvas.create_text(
+            scale_x + scale_length, scale_y + 15,
+            text="50 km",
+            font=self.small_font,
+            fill=self.colors["text_dark"],
+            anchor=tk.E
+        )
+        
+        # Draw city nodes with improved styling
+        city_positions = {
+            "City A": (150, 200),
+            "City B": (450, 200),
+            "City C": (150, 400),
+            "City D": (450, 400)
+        }
+        
+        for city_name, (x, y) in city_positions.items():
+            # Draw city glow effect - using concentric circles with lighter colors
+            glow_colors = ["#d1e9fa", "#b8dff8", "#9ed5f6"]
+            for i, color in enumerate(glow_colors):
+                size = 5 + i*5
+                self.map_canvas.create_oval(
+                    x - 25 - size, y - 25 - size,
+                    x + 25 + size, y + 25 + size,
+                    fill="",
+                    outline=color,
+                    width=2
+                )
+            
+            # Draw city circle with shadow effect
+            self.map_canvas.create_oval(
+                x-25, y-25, x+25, y+25, 
+                fill="#f1f5f9", 
+                outline=self.colors["secondary"], 
+                width=2
+            )
+            
+            # Draw inner circle
+            self.map_canvas.create_oval(
+                x-20, y-20, x+20, y+20, 
+                fill="#e2e8f0", 
+                outline=""
+            )
+            
+            # Draw city icon (improved building)
+            self.map_canvas.create_rectangle(
+                x-15, y-15, x-5, y+10, 
+                fill=self.colors["primary"], 
+                outline=""
+            )
+            self.map_canvas.create_rectangle(
+                x-4, y-20, x+6, y+10, 
+                fill=self.colors["primary_dark"], 
+                outline=""
+            )
+            self.map_canvas.create_rectangle(
+                x+7, y-10, x+17, y+10, 
+                fill=self.colors["primary"], 
+                outline=""
+            )
+            
+            # Draw windows on buildings
+            for bx, by in [(x-12, y-10), (x-12, y), (x+0, y-15), (x+0, y-5), (x+0, y+5), (x+12, y-5), (x+12, y+5)]:
+                self.map_canvas.create_rectangle(
+                    bx-2, by-2, bx+2, by+2,
+                    fill=self.colors["text_light"],
+                    outline=""
+                )
+            
+            # Draw city name with better styling
+            name_bg = self.map_canvas.create_rectangle(
+                x - len(city_name)*4 - 10, y + 25,
+                x + len(city_name)*4 + 10, y + 45,
+                fill=self.colors["bg_light"],
+                outline=self.colors["border"],
+                width=1
+            )
+            
+            self.map_canvas.create_text(
+                x, y + 35, 
+                text=city_name, 
+                font=self.normal_font, 
+                fill=self.colors["text_dark"]
+            )
+        
+        # Draw roads with improved styling
+        roads_to_draw = {
+            "Highway A": {"start": (150, 200), "end": (450, 200), "control": None},
+            "Highway B": {"start": (150, 400), "end": (450, 400), "control": None},
+            "Highway C": {"start": (150, 200), "end": (150, 400), "control": None},
+            "Highway D": {"start": (450, 200), "end": (450, 400), "control": None},
+            "Highway E": {"start": (150, 200), "end": (450, 400), "control": (300, 300)}
+        }
+        
+        # First draw all roads as background with shadow effect
+        for road, coords in roads_to_draw.items():
+            start = coords["start"]
+            end = coords["end"]
+            control = coords["control"]
+            
+            # Draw road shadow
+            if control:
+                # Curved road shadow
+                self.map_canvas.create_line(
+                    start[0]+3, start[1]+3, control[0]+3, control[1]+3, end[0]+3, end[1]+3,
+                    fill="#64748b", width=14, smooth=True, capstyle=tk.ROUND, joinstyle=tk.ROUND
+                )
+            else:
+                # Straight road shadow
+                self.map_canvas.create_line(
+                    start[0]+3, start[1]+3, end[0]+3, end[1]+3,
+                    fill="#64748b", width=14, capstyle=tk.ROUND, joinstyle=tk.ROUND
+                )
+            
+            # Draw road background (wider)
+            if control:
+                # Curved road
+                self.map_canvas.create_line(
+                    start[0], start[1], control[0], control[1], end[0], end[1],
+                    fill="#94a3b8", width=12, smooth=True, capstyle=tk.ROUND, joinstyle=tk.ROUND
+                )
+            else:
+                # Straight road
+                self.map_canvas.create_line(
+                    start[0], start[1], end[0], end[1],
+                    fill="#94a3b8", width=12, capstyle=tk.ROUND, joinstyle=tk.ROUND
+                )
+        
+        # Then draw the actual roads (our analyzed ones with colors)
+        for road in self.roads:
+            if road in roads_to_draw:
+                start = roads_to_draw[road]["start"]
+                end = roads_to_draw[road]["end"]
+                control = roads_to_draw[road]["control"]
+                
+                # Determine road color and width based on UCB values
+                if ucb_values and road in ucb_values:
+                    # Normalize UCB values to determine road color
+                    max_ucb = max(ucb_values.values()) if any(v != float('inf') for v in ucb_values.values()) else 0
+                    min_ucb = min(ucb_values.values()) if any(v != float('inf') for v in ucb_values.values()) else 0
+                    
+                    if ucb_values[road] == float('inf'):
+                        # For roads with infinite UCB (not yet evaluated)
+                        color = "#64748b"  # Gray
+                        width = 8
+                    else:
+                        # Normalize value between 0 and 1
+                        if max_ucb == min_ucb:
+                            normalized = 1.0
+                        else:
+                            normalized = (ucb_values[road] - min_ucb) / (max_ucb - min_ucb)
+                        
+                        # Generate color from green (high UCB) to red (low UCB)
+                        hue = 0.33 * normalized  # 0.33 is green in HSV
+                        r, g, b = colorsys.hsv_to_rgb(hue, 0.8, 0.9)
+                        color = f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}"
+                        
+                        # Width based on UCB value (6-10 pixels)
+                        width = 6 + normalized * 4
+                        
+                    # Mark the best road
+                    is_best = ucb_values[road] == max(ucb_values.values())
+                else:
+                    color = "#64748b"  # Default gray
+                    width = 8
+                    is_best = False
+                
+                # Draw the road with proper styling
+                if control:
+                    # Curved road
+                    self.map_canvas.create_line(
+                        start[0], start[1], control[0], control[1], end[0], end[1],
+                        fill=color, width=width, smooth=True, capstyle=tk.ROUND, joinstyle=tk.ROUND,
+                        tags=f"road_{road}"
+                    )
+                    
+                    # Draw road dashes (center line)
+                    self.map_canvas.create_line(
+                        start[0], start[1], control[0], control[1], end[0], end[1],
+                        fill="#ffffff", width=1, smooth=True, dash=(5, 10),
+                        capstyle=tk.ROUND, joinstyle=tk.ROUND
+                    )
+                else:
+                    # Straight road
+                    self.map_canvas.create_line(
+                        start[0], start[1], end[0], end[1],
+                        fill=color, width=width, capstyle=tk.ROUND, joinstyle=tk.ROUND,
+                        tags=f"road_{road}"
+                    )
+                    
+                    # Draw road dashes (center line)
+                    self.map_canvas.create_line(
+                        start[0], start[1], end[0], end[1],
+                        fill="#ffffff", width=1, dash=(5, 10),
+                        capstyle=tk.ROUND, joinstyle=tk.ROUND
+                    )
+                
+                # Add road label with better positioning
+                mid_x = start[0] + (end[0] - start[0]) / 2
+                mid_y = start[1] + (end[1] - start[1]) / 2
+                
+                # Adjust position for curved roads
+                if control:
+                    mid_x = (start[0] + control[0] + end[0]) / 3
+                    mid_y = (start[1] + control[1] + end[1]) / 3
+                
+                # Create label background with better styling
+                label_bg = self.map_canvas.create_rectangle(
+                    mid_x - 50, mid_y - 15,
+                    mid_x + 50, mid_y + 15,
+                    fill=self.colors["bg_light"],
+                    outline=self.colors["border"],
+                    width=2,
+                    tags=f"label_{road}"
+                )
+                
+                # Create road label
+                road_label = self.map_canvas.create_text(
+                    mid_x, mid_y,
+                    text=road,
+                    font=self.normal_font,
+                    fill=self.colors["text_dark"],
+                    tags=f"label_{road}"
+                )
+                
+                # Add "RECOMMENDED" badge for the best road
+                if ucb_values and is_best:
+                    # Calculate badge position (offset from road midpoint)
+                    badge_x = mid_x
+                    badge_y = mid_y - 35
+                    
+                    # Draw badge with professional styling
+                    self.map_canvas.create_polygon(
+                        badge_x - 75, badge_y,
+                        badge_x - 85, badge_y - 15,
+                        badge_x + 85, badge_y - 15,
+                        badge_x + 75, badge_y,
+                        badge_x + 85, badge_y + 15,
+                        badge_x - 85, badge_y + 15,
+                        fill=self.colors["success"],
+                        outline="",
+                        tags="badge"
+                    )
+                    
+                    # Draw badge text
+                    self.map_canvas.create_text(
+                        badge_x, badge_y,
+                        text="RECOMMENDED FOR IMPROVEMENT",
+                        font=self.small_font,
+                        fill=self.colors["text_light"],
+                        tags="badge"
+                    )
+        
+        # Draw legend for road colors with improved styling
+        if ucb_values:
+            # Create legend background
+            legend_x = 80
+            legend_y = height - 100
+            
+            legend_bg = self.map_canvas.create_rectangle(
+                legend_x - 20, legend_y - 50,
+                legend_x + 180, legend_y + 60,
+                fill=self.colors["bg_light"],
+                outline=self.colors["border"],
+                width=2
+            )
+            
+            # Legend title with accent bar
+            self.map_canvas.create_rectangle(
+                legend_x - 20, legend_y - 50,
+                legend_x + 180, legend_y - 30,
+                fill=self.colors["primary"],
+                outline="",
+            )
+            
+            self.map_canvas.create_text(
+                legend_x + 80, legend_y - 40,
+                text="Road Priority Legend",
+                font=self.normal_font,
+                fill=self.colors["text_light"]
+            )
+            
+            # High priority
+            self.map_canvas.create_line(
+                legend_x, legend_y - 10,
+                legend_x + 30, legend_y - 10,
+                fill=self.colors["success"],
+                width=8,
+                capstyle=tk.ROUND
+            )
+            self.map_canvas.create_text(
+                legend_x + 40, legend_y - 10,
+                text="High Priority",
+                font=self.small_font,
+                fill=self.colors["text_dark"],
+                anchor=tk.W
+            )
+            
+            # Medium priority
+            self.map_canvas.create_line(
+                legend_x, legend_y + 15,
+                legend_x + 30, legend_y + 15,
+                fill=self.colors["warning"],
+                width=8,
+                capstyle=tk.ROUND
+            )
+            self.map_canvas.create_text(
+                legend_x + 40, legend_y + 15,
+                text="Medium Priority",
+                font=self.small_font,
+                fill=self.colors["text_dark"],
+                anchor=tk.W
+            )
+            
+            # Low priority
+            self.map_canvas.create_line(
+                legend_x, legend_y + 40,
+                legend_x + 30, legend_y + 40,
+                fill=self.colors["danger"],
+                width=8,
+                capstyle=tk.ROUND
+            )
+            self.map_canvas.create_text(
+                legend_x + 40, legend_y + 40,
+                text="Low Priority",
+                font=self.small_font,
+                fill=self.colors["text_dark"],
+                anchor=tk.W
+            )
+    
+    def calculate_ucb(self):
+        if not hasattr(self, 'day_widgets'):
+            messagebox.showwarning("Warning", "Please set the number of days first")
+            return
+        
+        self.rewards = {road: [] for road in self.roads}
+        self.counts = {road: 0 for road in self.roads}
+        
+        daily_log = []
+        
+        for day_index, entries in enumerate(self.day_widgets, start=1):
+            day_log = {"day": day_index, "roads": []}
+            
+            for road, traffic_scale, traffic_label in entries:
+                try:
+                    traffic_impact = float(traffic_label.cget("text"))
+                    if traffic_impact < 1 or traffic_impact > 10:
+                        raise ValueError
+                    
+                    benefit = self.road_params[road]["benefit"]
+                    reward = benefit - traffic_impact * 10  # Scale to make impact more significant
+                    
+                    self.rewards[road].append(reward)
+                    self.counts[road] += 1
+                    
+                    day_log["roads"].append({
+                        "name": road,
+                        "traffic": traffic_impact,
+                        "reward": reward
+                    })
+                    
+                except ValueError:
+                    messagebox.showerror("Error", f"Invalid traffic impact for {road} on Day {day_index}. Use values 1-10")
+                    return
+            
+            daily_log.append(day_log)
+        
+        ucb_values = {}
+        results_text = ""
+        
+        # Create a more professional results display
+        for road in self.roads:
+            if self.counts[road] == 0:
+                ucb_values[road] = float('inf')
+                results_text += f"• {road}: No data collected yet (UCB = ∞)\n"
+            else:
+                avg_reward = np.mean(self.rewards[road])
+                ucb = avg_reward + math.sqrt(2 * math.log(self.total_days) / self.counts[road])
+                ucb_values[road] = ucb
+                results_text += f"• {road}: Average Reward = {avg_reward:.2f}, UCB Score = {ucb:.2f}\n"
+        
+        # Find the best road
+        best_road = max(ucb_values, key=ucb_values.get)
+        
+        # Add recommendation with professional formatting
+        results_text += f"\nRecommendation: Based on the UCB algorithm analysis, {best_road} should be prioritized for reconstruction."
+        results_text += f"\n\nThis recommendation is based on {self.total_days} days of traffic data and optimizes for maximum long-term benefit."
+        
+        # Update results display with better formatting
+        self.results_label.config(text=results_text)
+        
+        # Make sure the results canvas scrollregion is updated
+        self.results_content.update_idletasks()
+        self.on_results_configure()
+        
+        # Update road map visualization
+        self.draw_road_map(ucb_values)
+        
+        # Show recommendation in a more professional dialog
+        recommendation_text = f"Based on our analysis of {self.total_days} days of traffic data, we recommend prioritizing {best_road} for reconstruction.\n\nThis recommendation optimizes for maximum long-term benefit while minimizing traffic disruption."
+        
+        messagebox.showinfo(
+            "Optimization Results", 
+            recommendation_text
+        )
+
+# Run the application
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ModernRoadOptimizer(root)
+    root.mainloop()
