@@ -13,7 +13,7 @@ A full-stack sample app combining a **Kotlin** frontend with a **Laravel (PHP)**
 
 ## Tech stack
 
-- **Frontend:** Kotlin (Android / Kotlin/JS / KMM — adjust to your flavor)  
+- **Frontend:** Kotlin (Android)  
 - **Backend:** Laravel (PHP)  
 - **Database:** MySQL / MariaDB (or SQLite for quick local dev)  
 - **Tools:** Composer, PHP, Java JDK, Gradle (or included Gradle wrapper), Node.js / npm (if Kotlin/JS)
