@@ -2,27 +2,6 @@
 
 A full-stack sample app combining a **Kotlin** frontend with a **Laravel (PHP)** backend.
 
-> This README assumes the repository has two main folders: `frontend_kotlin/` and `backend_laravel/`.  
-> Adjust paths/commands if your repo layout differs.
-
----
-
-## Table of contents
-
-- [Project overview](#project-overview)  
-- [Tech stack](#tech-stack)  
-- [Repo structure](#repo-structure)  
-- [Prerequisites](#prerequisites)  
-- [Setup & Installation](#setup--installation)  
-  - [Backend (Laravel)](#backend-laravel)  
-  - [Frontend (Kotlin)](#frontend-kotlin)  
-- [Run the app](#run-the-app)  
-- [Testing](#testing)  
-- [Environment variables](#environment-variables)  
-- [Development notes & tips](#development-notes--tips)  
-- [Contributing](#contributing)  
-- [License](#license)  
-- [Contact](#contact)
 
 ---
 
