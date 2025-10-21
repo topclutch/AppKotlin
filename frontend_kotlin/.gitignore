@@ -33,6 +33,7 @@ captures/
 # App-specific folders to ignore
 app/src/main/java/com/example/upp_app/ui/screen/chatbot/
 app/src/main/java/com/example/upp_app/ui/screen/home/
+app/src/main/java/com/example/upp_app/api/
 
 # Optional: ignore all screen subfolders except ones you want
 # app/src/main/java/com/example/upp_app/ui/screen/*   # ignore everything in screen
