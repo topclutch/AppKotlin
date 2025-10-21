@@ -1,0 +1,47 @@
+# -------------------------
+# Kotlin / Android
+# -------------------------
+
+# Gradle files
+.gradle/
+build/
+*/build/
+
+# IDE / editor
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# Local properties
+local.properties
+
+# Mac / Windows
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Kotlin / Android caches
+captures/
+.externalNativeBuild
+.cxx/
+*.hprof
+
+# App-specific folders to ignore
+app/src/main/java/com/example/upp_app/ui/screen/chatbot/
+app/src/main/java/com/example/upp_app/ui/screen/home/
+
+# Optional: ignore all screen subfolders except ones you want
+# app/src/main/java/com/example/upp_app/ui/screen/*   # ignore everything in screen
+# !app/src/main/java/com/example/upp_app/ui/screen/keep_this_folder/ # but keep specific folders
+
+# Gradle Wrapper
+gradle/wrapper/gradle-wrapper.jar
+gradle/wrapper/gradle-wrapper.properties
+
+# Generated files
+out/
+bin/
