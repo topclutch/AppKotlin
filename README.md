@@ -12,7 +12,7 @@ A full-stack sample app combining a **Kotlin** frontend with a **Laravel (PHP)**
 ### Home
 [![Home](img/home.png)](https://raw.githubusercontent.com/topclutch/kotlin_app/main/img/home.png)  
 
-### Chat Inicio
+### Chat 
 [![Chat Inicio](img/chat_inicio.png)](https://raw.githubusercontent.com/topclutch/kotlin_app/main/img/chat_inicio.png)  
 
 ### Chat
